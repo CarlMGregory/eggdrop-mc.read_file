@@ -1,7 +1,8 @@
 ##
-# ReadFile v1.4.1
-#  by Carl M. Gregory - MC_8 <gregory@worldinter.net> (feel free to report bugs)
-#  This file, along with many others are best found at http://bseen.tclslave.net/
+# Read File v1.5 by MC_8 - Carl M. Gregory <mc8@purehype.net>
+#  This script will only run on eggdrop 1.5.5 or greater.
+#
+# My SVS Website - http://mc.purehype.net:81/
 ##
 
 ##
@@ -12,8 +13,18 @@
 ##
 # History
 ##
+# v1.5 (11.14.01)
+#  MC_8 - Updated SVS from v1.2 to v2.0.
+#  MC_8 - Fixed flood proc.
+#  MC_8 - Joe_Astor - Fixed '[00:36] TCL error [mc:rf:telllist:pubm]: list
+#                     element in quotes followed by "?" instead of space'.
+#  MC_8 - Cleaned up the coding, made it faster/ more effecent.
+#  MC_8 - Added mc_rf(private) and mc_rf(ctcp).
+#  MC_8 - Removed mc_rf(speed), not needed.  Eggdrop has an internal que'n
+#         system to keep the bot from flooding it's self offline.
+#
 # v1.4.1 (03.05.01)
-#  MC_8 - Upgraded SVS to v1.2
+#  MC_8 - Upgraded SVS from v1.1 to v1.2.
 #  MC_8 - SoulMaster - Removed debug outputs (opps, this should of been gone
 #                      already).
 #
@@ -46,47 +57,52 @@
 #  MC_8 - Inital release.
 ##
 
-# Set the next line as the command you want to initiate the lister
-# and set the file, confusing? here is an example
-# set listmc(<lowercased command>) <file.txt or /path/to/file.txt>
-# command has to be lower cased or it will not work
-# file.txt is case sensative, should be exact to the real filename.
-# you may add as many as you would like
-set listmc(mp3help) mp3help.txt
-set listmc(!help) mp3help.txt
+# Set this to the command and file you want to be read?
+# Syntax:
+#  set mc_rfc(<command>) <file.txt or /path/to/file.txt>
+# You may add as many as you would like, examples below.
+set mc_rfc(mp3help) mp3help.txt
+set mc_rfc(!help) mp3help.txt
 
-# Do you also want these commands avilable public too?
-# 0 = no
-# 1 = yes
+# [0=no/1=yes] Do you want these commands avilable  via 
+# private message (/msg bot <command>)?
+set mc_rf(private) 1
+
+# [0=no/1=yes] Do you want these commands avilable via CTCP
+# (/ctcp bot <command>)?
+set mc_rf(ctcp) 1
+
+# [0=no/1=yes] Do you want these commands avilable publicly
+# (/msg #channel <command>?
 set mc_rf(public) 1
 
-# If triggered in public, do you want it to read the file in public insted
-# of privmsg to the user?
-# 0 = no
-# 1 = yes
-set mc_rf(public:read) 1
-
-# If above public is 1 (yes), what channels do you want them on exactly?
-# Set to "" for all channels.
+# If above, public, is 1; what channels should the commands
+# be active on?  Set to "" for all channels. Seperate each 
+# channel with a space.
 set mc_rf(channels) "#mp34free #abc123"
 
-# To slow the post speed down a bit, how many seconds do you want to
-# space out each post?  (Seconds per Line)
-# example:  2 will post 1 line every 2 seconds
-set mc_rf(speed) 1
+# If triggered in public, do you want it to read the file in
+# publicly or via private message?
+#  0 = private message
+#  1 = publicly
+set mc_rf(public:read) 1
 
-# How many times in how many min.s can the user access a command?
+# Per person, how many commands in how many min.s do you want
+# to allow before condidering it a flood from this 1 user?
+# <times>:<min.s>
 set mc_rf(user:access) 1:1
 
-# Overall, how many commands:min can be accessed before considering
-# a possible flood and disable all commands?
+# For everyone, how many commands in how many min.s do you want
+# to allow before considering it a mass flood?
+# <times>:<min.s>
 set mc_rf(over:access) 6:1
 
-# If the flood is detected, how long do you want to keep the commands
-# disabled?  (in seconds)
+# If the a flood is detected, how long (in seconds) do you want 
+# to keep the user on ignore?
 set mc_rf(flood:sec) 10
 
-## MC SVS (Script Version Server) v1.2 ##
+
+## MC SVS (Script Version Service) v2.0 ##
 # Do you want the bot to connection to MC_8's SVS to see if there are newer versions
 # of this script avilable?  It will only tell you -- It's up to you to get the newest
 # version (I decided not to auto update the code, there may be new features in the
@@ -97,16 +113,16 @@ set mc_rf(svs:enabled) 1
 # Once a day the script will check with the SVS -- this specifies when
 # that should happen.  The setting should be the hour (military).
 # examples:
-#  set mc_rf(svs:check) 0  ;#This is at Midnight
-#  set mc_rf(svs:check) 5  ;#This is at 5am
+#  set mc_rf(svs:check) 0   ;#This is at Midnight
+#  set mc_rf(svs:check) 5   ;#This is at 5am
 #  set mc_rf(svs:check) 13  ;#This is at 1pm
 #  set mc_rf(svs:check) 23  ;#This is at 11pm
 set mc_rf(svs:check) 3
 
-# Upon finding a newer version, who do you want to notify via note?
-# Only the admin of the bot should really be worried about these notes,
-# there the ones that keep everything up to par on the bots.
-# Seperate each user with a " " (space).
+# Upon finding a newer version of this script, who do you want this script
+# to send a note to telling them of this newer version?
+# If more than 1 user is to be notified, seperate each user with a
+# ' ' (space).
 set mc_rf(svs:notify) "MC_8"
 
 # Do you want even beta version notified to whomever you have set?  Or just
@@ -117,145 +133,180 @@ set mc_rf(svs:stableonly) 0
 
 
 
+##
+# TCL Coding below, do not edit past here
+# unless you know what your doing.
+##
 
-## Do not venture past here, TCL Coding below.
+set mc_rf(script)      "Read File"
+set mc_rf(version)     "v1.5"
+set mc_rf(svs:script)  "readfile"
+set mc_rf(svs:version) "001005000000"
+set mc_rf(svs:server)  "mc.purehype.net"
+set mc_rf(svs:port)    "81"
+set mc_rf(svs:get)     "/"
+set mc_rf(svs:query)   "svs=$mc_rf(svs:script)&version=$mc_rf(svs:version)"
 
-set mc_rf(version) v1.4.1
-set mc_rf(svs:script) "readfile 001004001000"
-set mc_rf(svs:server) "mc.purehype.net 8085"
+if {$numversion < "1050500"} {
+ putlog "$mc_rf(script) $mc_rf(version) by MC_8 will only work on eggdrop 1.5.5 or greater."
+ putlog "$mc_rf(script) $mc_rf(version)  will not work with eggdrop $version."
+ putlog "$mc_rf(script) $mc_rf(version)  not loaded."
+ return 1
+}
 
-bind pubm - * mc:rf:telllist:pubm
 
-proc mc:rf:telllist:pubm {nick uhost hand chan args} {
+bind pubm - * mc:rf:pubm
+proc mc:rf:pubm {nick uhost hand chan arg} {
  global mc_rf
- if {!$mc_rf(public)} {return}
- if {$mc_rf(channels) == ""} {set channels [string tolower [channels]]} {
-  set channels [string tolower $mc_rf(channels)]
+ if {(!$mc_rf(public)) || (($mc_rf(channels) != "") &&
+     ([lsearch -exact [string tolower $mc_rf(channels)] [string tolower $chan]] == "-1"))} {
+  return 0
+ }; mc:rf:rf $nick $uhost $hand $arg channel $chan
+}
+
+bind msgm - * mc:rf:msgm
+proc mc:rf:msgm {nick uhost hand arg} {
+ global mc_rf
+ if {$mc_rf(private)} {mc:rf:rf $nick $uhost $hand $arg privmsg}
+}
+
+proc mc:rf:ctcp {from key arg} {
+ global mc_rf botnick
+ scan "$arg\015" "%s :%\[^\015\]" dest arg
+ if {(![regexp -- "^\001(.*)\001\$" $arg a text]) ||
+     ([string tolower $dest] != [string tolower $botnick]) ||
+     (!$mc_rf(ctcp))} {return 0}
+ scan "$text\015" "%s %\[^\015\]" key text
+ scan $from {%[^!]!%[^@]@%s} nick ident host
+ if {[join $text] != ""} {append key " $text"}
+ mc:rf:rf $nick $ident@$host [nick2hand $nick] $key ctcp
+}
+
+proc mc:rf:rf {nick uhost hand arg method {chan {}}} {
+ global mc_rfc mc_rf
+ scan $uhost {%[^@]@%s} ident host
+ set larg [string tolower $arg]
+ if {(![info exists mc_rfc($larg)]) ||
+     ([info exists mc_rf(!ignore:$host)]) ||
+     ([info exists mc_rf(!ignore:all)])} {return 0}
+ if {[mc:rf:userlimit $host]} {
+  putlog "$mc_rf(script):  Flood detected from $nick ($uhost), ignoring."
+  return 1
  }
- if {![string match "* [string tolower $chan] *" " $channels "]} {return 0}
- mc:rf:telllist $nick $uhost $hand [join $args] $chan
+ if {[mc:rf:userlimit all]} {
+  putlog "$mc_rf(script):  Flood detected, ignoring everyone."
+  return 1
+ }
+ if {![file exists $mc_rfc($larg)]} {
+  putlog "$mc_rf(script):  Error for trigger '$arg', $mc_rfc($larg) doesn't exist."
+  return 0
+ }
+ if {($method == "channel") && ($mc_rf(public:read))} {set nick $chan}
+ set io [open $mc_rfc($larg) r]
+ while {![eof $io]} {puthelp "PRIVMSG $nick :[gets $io]"}; close $io
+ return 1
 }
 
-bind msgm - * mc:rf:telllist:msgm
-proc mc:rf:telllist:msgm {nick uhost hand args} {
- global mc_rf ; mc:rf:telllist $nick $uhost $hand [join $args] msg
+proc mc:rf:userlimit {host} {
+ global mc_rf
+ set host [string tolower $host]
+ if {$host == "all"} {set array "over"} else {set array "user"}
+ scan $mc_rf(${array}:access) {%[^:]:%s} a b
+ if {(!$a) || (!$b)} {return 0}
+ if {[info exists mc_rf(!$host)]} {
+  if {$mc_rf(!$host) >= $a} {
+   set mc_rf(!ignore:$host) 1
+   utimer $mc_rf(flood:sec) [list unset mc_rf(!ignore:$host)]
+   return 1
+  }; incr mc_rf(!$host) 1
+ } else {set mc_rf(!$host) 1}
+ utimer $b [list incr mc_rf(!$host) -1]; return 0
 }
 
-proc mc:rf:telllist {nick uhost hand args method} {
- global listmc listmcg mc_rf ; set args [join $args]
- if {[info exists listmc([string tolower $args])]} {
-  set temp $args:[string range $uhost [expr [string first @ $uhost]+1] e]
-  set access [lindex [split $mc_rf(user:access) :] 0]
-  if {[info exists mc_rf(user:$temp)]} {
-   if {$mc_rf(user:$temp) > $access} {
-    if {![string match "*catch {incr mc_rf(user:$temp) -1}*" [timers]]} {
-     unset mc_rf(user:$temp) ; utimer 1 mc:rf:telllist $nick $uhost $hand $args $method
-    } {putlog "ReadFile:  Ignoring $nick!$uhost's request of $args.  (Detected from from $nick)"}
-    return 0
-   } {
-    incr mc_rf(user:$temp) 1
-    timer [lindex [split $mc_rf(user:access) :] 1] "catch {incr mc_rf(user:$temp) -1}"
-   }
-  } {
-   set mc_rf(user:$temp) 1
-   timer [lindex [split $mc_rf(user:access) :] 1] "catch {incr mc_rf(user:$temp) -1}"
-  }
-  set access [lindex [split $mc_rf(over:access) :] 0]
-  if {[info exists mc_rf(over:flood)]} {
-   if {$mc_rf(over:flood) > $access} {
-    if {![string match "catch {incr mc_rf(over:flood) -1}" [timers]]} {
-     unset mc_rf(over:flood) ; utimer 1 mc:rf:tellist $nick $uhost $hand $args $method
-    } {
-     set mc_rf(over:flood:ignore) 1
-     utimer $mc_rf(flood:sec) "catch {unset mc_rf(over:flood:ignore)}"
-     putlog "ReadFile:  Ignoring $nick!$uhost's request of $args.  (Detected overall flood)"
-    } ; return 0
-   } {
-    incr mc_rf(over:flood) 1
-    timer [lindex [split $mc_rf(over:access) :] 1] "catch {incr mc_rf(over:flood) -1}"
-   }
-  } {
-   set mc_rf(over:flood) 1
-   timer [lindex [split $mc_rf(over:access) :] 1] "catch {incr mc_rf(over:flood) -1}"
-  } ; if [info exists mc_rf(over:flood:ignore)] {return 0}
-  if {$mc_rf(public:read) && ($method != "msg")} {set nick $method}
-  if {![file exists $listmc([string tolower $args])]} {
-   puthelp "PRIVMSG $nick :ReadFile: error, $listmc([string tolower $args]) doesn't exist."
-  } { 
-   # reading info...
-   set file [open $listmc([string tolower $args]) r]
-   if {!$mc_rf(speed)} {
-    while {![eof $file]} {
-     set get [gets $file]
-     puthelp "PRIVMSG $nick :$gets"
-    }
-   } {
-    set i 1
-    while {![eof $file]} {
-     set get [gets $file]
-     utimer $i "puthelp {PRIVMSG $nick :$get}"
-     incr i $mc_rf(speed)
-    }
-   } ; close $file
-   # End Of File
-  }
- } ; return 1
+## SVS v2.0
+if {(![info exists mc_rf(svs:enabled)]) ||
+    (![regexp -- {^(0|1)$} $mc_rf(svs:enabled)])} {set mc_rf(svs:enabled) 0}
+if {(![info exists mc_rf(svs:check)]) ||
+    ([regexp -- {[^0-9]} $mc_rf(svs:check)])} {set mc_rf(svs:check) 0}
+if {![info exists mc_rf(svs:notify)]} {set mc_rf(svs:notify) $owner}
+if {(![info exists mc_rf(svs:stableonly)]) ||
+    (![regexp -- {^(0|1)$} $mc_rf(svs:stableonly)])} {set mc_rf(svs:stableonly) 0}
+foreach bind [binds mc:rf:svs:time] {
+ unbind [lindex $bind 0] [lindex $bind 1] [lindex $bind 2] [lindex $bind 4]
 }
-
+foreach command [info commands mc:rf:svs:time] {rename $command ""}
 if {$mc_rf(svs:enabled)} {
  if {($mc_rf(svs:check) > "23") || ($mc_rf(svs:check) < "0")} {set mc_rf(svs:check) 00}
  if {[string length $mc_rf(svs:check)] == "1"} {set mc_rf(svs:check) 0$mc_rf(svs:check)}
- if {$mc_rf(svs:stableonly)} {
-  set mc_rf(svs:script) [string range $mc_rf(svs:script) 0 [expr [string length $mc_rf(svs:script)]-4]]999
- }
- catch {unbind time - "00 $mc_rf(svs:oldcheck) * * *" mc:rf:svs:time}
- set mc_rf(svs:oldcheck) $mc_rf(svs:check)
- bind time - "00 $mc_rf(svs:check) * * *" mc:rf:svs:time
- proc mc:rf:svs:time {min hour day month year} {
+ bind time - "00 $mc_rf(svs:check) *" mc:rf:svs:time
+ proc mc:rf:svs:time {{args ""}} {
   global mc_rf
-  catch {control [connect [lindex $mc_rf(svs:server) 0] [lindex $mc_rf(svs:server) 1]] mc:rf:svs:interface}
+  if {[catch {socket -async $mc_rf(svs:server) $mc_rf(svs:port)} sid]} {;\
+   putlog "SVS Error\[$mc_rf(svs:script)/$mc_rf(svs:version)\]:  $sid"
+   return 1
+  }
+  fconfigure $sid -blocking 0 -buffering line
+  set tout [after 60000 "mc:rf:svs:interface $sid timeout"]
+  fileevent $sid readable "mc:rf:svs:interface $sid $tout"
+  puts $sid "GET $mc_rf(svs:get)?$mc_rf(svs:query) HTTP/1.0\
+           \nHost: $mc_rf(svs:server)\n"
+  flush $sid
  }
 }
-proc mc:rf:svs:interface {idx args} {
- global mc_rf;set args [join $args]
- switch -- [lindex $args 0] {
-  "" {return 1}
-  000 {putdcc $idx q}
-  002 {putdcc $idx [lindex $mc_rf(svs:script) 0]}
-  003 {
-   set args [lrange $args 1 e]
-   if {[lindex $args 0] != [lindex $mc_rf(svs:script) 0]} {return 0}
-   putdcc $idx q
-   if {[lindex $args 1] > [lindex $mc_rf(svs:script) 1]} {
-    set note [mc:rf:svs:replace [lindex $args 7] "%0 {[lindex $args 0]} %1 {[lindex $args 1]} %2 {[lindex $args 2]}"]
-    set note [mc:rf:svs:replace $note "%3 {[lindex $args 3]} %4 {[lindex $args 4]} %5 {[lindex $args 5]}"]
-    set note [mc:rf:svs:replace $note "%6 {[lindex $args 6]} %8 {[lindex $args 8]} %version {$mc_rf(version)}"]
-    set note [mc:rf:svs:replace $note "%9 {[lindex $args 9]} %10 {[lindex $args 10]} %11 {[lindex $args 11]}"]
-    set note [mc:rf:svs:replace $note "%12 {[lindex $args 12]} %13 {[lindex $args 13]} %14 {[lindex $args 14]}"]
-    set note [mc:rf:svs:replace $note "%15 {[lindex $args 15]} %16 {[lindex $args 16]} %17 {[lindex $args 17]}"]
-    set note [mc:rf:svs:replace $note "%18 {[lindex $args 18]} %19 {[lindex $args 19]} %20 {[lindex $args 20]}"]
-    foreach notify [join [split $mc_rf(svs:notify) ",;"]] {
-     set outnote [mc:rf:svs:replace $note "%nick {$notify}"]
-     if {[string match "*$outnote*" "[notes $notify -[notes $notify]]"]} {
-      set cont 0
-      foreach unote [notes $notify -[notes $notify]] {
-       if {$outnote == [lindex $unote 2]} {set cont 1;break}
-      };if {$cont} {continue}
-     }
-     switch -- [sendnote SVS $notify $outnote] {
-      0 {putlog "MC SVS for [lindex $mc_rf(svs:script) 0] had some errors updating $notify on current version of script; unknown reason!"}
-      3 {putlog "MC SVS for [lindex $mc_rf(svs:script) 0] had some errors updating $notify on current version of script; notebox too full!"}
+proc mc:rf:svs:interface {sid tout} {
+ global mc_rf
+ if {$tout == "timeout"} {
+  putlog "SVS Warning\[$mc_rf(svs:script)/$mc_rf(svs:version)\]:  SVS Server timed out."
+  close $sid
+  return 0
+ }; after cancel $tout
+ set temp 0
+ while {![eof $sid]} {
+  gets $sid get
+  if {$temp < "2"} {
+   if {$get == ""} {incr temp; if {$temp == "1"} {set temp 2}}
+   continue
+  }; if {$get == ""} {continue}
+  switch -- [lindex $get 0] {
+   003 {
+    set reply [lrange $get 1 end]
+    if {[lindex $reply 0] != $mc_rf(svs:script)} {
+     putlog "SVS Error\[$mc_rf(svs:script)/$mc_rf(svs:version)\]:  SVS Server sent wrong info, got [lindex $reply 0]"
+     break   
+    }
+    if {$mc_rf(svs:stableonly)} {
+     set temp [string range $mc_rf(svs:version) 0 8]999
+    } else {set temp [string range $mc_rf(svs:version) 0 11]}
+    if {[lindex $reply 1] > $temp} {
+     set note [lindex $reply 5]
+     regsub -- %0 $note [lindex $reply 0] note
+     regsub -- %1 $note [lindex $reply 1] note
+     regsub -- %2 $note [lindex $reply 2] note
+     regsub -- %3 $note [lindex $reply 3] note
+     regsub -- %4 $note [lindex $reply 4] note
+     regsub -- %version $note $mc_rf(version) note
+     foreach to [split $mc_rf(svs:notify) ",; "] {
+      if {$to == ""} {continue}
+      regsub -- %nick $note $to outnote
+      if {[string match *$outnote* [set unotes [notes $to -[notes $to]]]]} {
+       set temp 0
+       foreach unote $unotes {
+        if {$outnote == [lindex $unote 2]} {set temp 1; break}
+       }; if {$temp} {continue}
+      }
+      switch -- [sendnote SVS $to $outnote] {
+       0 {
+        if {![validuser $notify]} {set x "invalid user"} else {set x "unknown error"}
+        putlog "SVS Error\[$mc_rf(svs:script)/$mc_rf(svs:version)\]:  Trying to send note to $to, $x."
+       }
+       3 {putlog "SVS Error\[$mc_rf(svs:script)/$mc_rf(svs:version)\]:  Trying to send note to $to, notebox too full!"}
+      }
      }
     }
    }
   }
- };return 0
+ }; close $sid
 }
-proc mc:rf:svs:replace {string subs} {
- if {[llength $subs] == "1"} {set subs [lindex $subs 0]}
- for {set i 0} {[lindex $subs $i] != ""} {incr i 2} {
-  regsub -all -- [lindex $subs $i] $string [lindex $subs [expr $i+1]] string
- } ; return $string
-}
+## ^
 
-putlog "ReadFile $mc_rf(version) by MC_8 loaded."
+putlog "$mc_rf(script) $mc_rf(version) by MC_8 loaded."
